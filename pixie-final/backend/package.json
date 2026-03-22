@@ -4,7 +4,7 @@
   "description": "Pixie AI Assistant — Backend (Gemini + Render)",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
+    "start": "node index.js",
     "dev": "nodemon index.js"
   },
   "engines": {
