@@ -1,0 +1,4 @@
+GEMINI_API_KEY=AIzaSyCgWri_HqIUKsKHaQwixfvNoTD6GIIN9Xo
+ELEVENLABS_API_KEY=your_key_here
+ELEVENLABS_VOICE_ID=your_voice_id_here
+MONGODB_URI=mongodb+srv://admin:2006%40Infinity@pixie.apa4hjy.mongodb.net/?appName=Pixie
