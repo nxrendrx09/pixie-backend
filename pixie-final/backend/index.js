@@ -1,21 +1,23 @@
 import express from "express";
 import mongoose from "mongoose";
 import dotenv from "dotenv";
+import http from "http";
+import cors from "cors";
+import { Server } from "socket.io";
 
 dotenv.config();
 
-const app = express();   // ✅ FIRST
+const app = express();
+const server = http.createServer(app); // ✅ create server FIRST
 
-const server = require("http").createServer(app);   // ✅ AFTER
-
+// Middleware
 app.use(express.json());
-
-const cors = require("cors");
 app.use(cors({
   origin: "*"
 }));
 
-const io = require("socket.io")(server, {
+// Socket.io setup
+const io = new Server(server, {
   cors: {
     origin: "*",
     methods: ["GET", "POST"]
