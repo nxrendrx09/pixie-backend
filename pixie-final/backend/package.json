@@ -1,6 +1,7 @@
 {
   "name": "pixie-backend",
   "version": "1.0.0",
+  "type": "module",
   "description": "Pixie AI Assistant — Backend (Gemini + Render)",
   "main": "server.js",
   "scripts": {
