@@ -114,115 +114,123 @@ textarea.inp::placeholder { color:var(--mt); }
 <audio id="audio" style="display:none"></audio>
 
 <script>
-// !! Replace with your actual Render URL after deploying !!
-const BACKEND = "https://pixie-backend-e5rv.onrender.com";
+ // !! Replace with your actual Render URL after deploying !!
+const BACKEND = "https://pixie-backend-ak17.onrender.com";
 
 const socket = io(BACKEND);
 let busy = false;
 
-socket.on('connect',    () => { document.getElementById('connStatus').textContent = 'Online'; });
-socket.on('disconnect', () => { document.getElementById('connStatus').textContent = 'Reconnecting...'; });
-socket.on('morning_briefing', ({ content, audio }) => {
-  addMsg('assistant', content);
-  if (audio) playAudio(audio);
+// connection status
+socket.on('connect', () => {
+  document.getElementById('connStatus').textContent = 'Online';
 });
 
-const emojis = { idle:'😊', listening:'👂', thinking:'🤔', speaking:'💬', happy:'😄', sad:'🥺' };
-const labels = { idle:'Ready for you ✨', listening:'Listening...', thinking:'Thinking...', speaking:'Speaking...', happy:'Yay!', sad:'Here for you 💜' };
+socket.on('disconnect', () => {
+  document.getElementById('connStatus').textContent = 'Reconnecting...';
+});
 
-function setAvatar(state) {
-  const c = document.getElementById('avCircle');
-  const l = document.getElementById('avState');
-  const w = document.getElementById('waves');
-  c.className = 'av-circle' + (state !== 'idle' ? ' ' + state : '');
-  c.textContent = emojis[state] || '😊';
-  l.textContent = labels[state] || '';
-  w.style.display = state === 'speaking' ? 'flex' : 'none';
-}
+// ✅ THIS IS IMPORTANT
+socket.on("reply", (msg) => {
+  addMsg("assistant", msg);
+});
+  
 
-function addMsg(role, content) {
-  const msgs = document.getElementById('msgs');
-  const time = new Date().toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit' });
-  const row  = document.createElement('div');
-  row.className = 'mrow ' + (role === 'assistant' ? 'pixie' : 'user');
-  row.innerHTML = role === 'assistant'
-    ? `<div class="mdot"></div><div><div class="bbl pixie">${content}</div><div class="btime">${time}</div></div>`
-    : `<div><div class="bbl user">${content}</div><div class="btime" style="text-align:right">${time}</div></div>`;
-  msgs.appendChild(row);
-  msgs.scrollTop = msgs.scrollHeight;
-}
+  const emojis = { idle:'😊', listening:'👂', thinking:'🤔', speaking:'💬', happy:'😄', sad:'🥺' };
+  const labels = { idle:'Ready for you ✨', listening:'Listening...', thinking:'Thinking...', speaking:'Speaking...', happy:'Yay!', sad:'Here for you 💜' };
 
-function showTyping() {
-  const msgs = document.getElementById('msgs');
-  const d = document.createElement('div');
-  d.id = 'typing'; d.className = 'typing';
-  d.innerHTML = '<div class="tdot"></div><div class="tdot"></div><div class="tdot"></div><span style="margin-left:4px">Pixie soch rahi hai...</span>';
-  msgs.appendChild(d); msgs.scrollTop = msgs.scrollHeight;
-}
-function hideTyping() { document.getElementById('typing')?.remove(); }
-
-function playAudio(b64) {
-  const a = document.getElementById('audio');
-  a.src = 'data:audio/mp3;base64,' + b64;
-  setAvatar('speaking');
-  a.onended = () => setAvatar('idle');
-  a.play().catch(() => setAvatar('idle'));
-}
-
-async function send(text = null, b64 = null, mime = null) {
-  const inp = document.getElementById('inp');
-  const msg = text ?? inp.value.trim();
-  if (!msg && !b64) return;
-  if (busy) return;
-  busy = true;
-  document.getElementById('sendBtn').disabled = true;
-  inp.value = ''; inp.style.height = 'auto';
-  addMsg('user', msg || 'Sent a photo');
-  showTyping(); setAvatar('thinking');
-
-  try {
-    const body = { message: msg || 'What do you see?' };
-    if (b64)  { body.imageBase64 = b64; body.imageType = mime; }
-    const res  = await fetch(`${BACKEND}/api/chat`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });
-    const data = await res.json();
-    hideTyping();
-    addMsg('assistant', data.reply);
-    if (data.audio) playAudio(data.audio);
-    else { setAvatar(data.mood === 'happy' ? 'happy' : data.mood === 'sad' ? 'sad' : 'idle'); setTimeout(()=>setAvatar('idle'),2500); }
-    loadMems();
-  } catch {
-    hideTyping(); addMsg('assistant', 'Arre yaar, kuch gadbad ho gayi. Dobara try karo!'); setAvatar('idle');
+  function setAvatar(state) {
+    const c = document.getElementById('avCircle');
+    const l = document.getElementById('avState');
+    const w = document.getElementById('waves');
+    c.className = 'av-circle' + (state !== 'idle' ? ' ' + state : '');
+    c.textContent = emojis[state] || '😊';
+    l.textContent = labels[state] || '';
+    w.style.display = state === 'speaking' ? 'flex' : 'none';
   }
-  busy = false; document.getElementById('sendBtn').disabled = false;
-}
 
-function handleImg(input) {
-  const file = input.files[0]; if (!file) return;
-  const reader = new FileReader();
-  reader.onload = e => send('Pixie, is photo mein kya hai?', e.target.result.split(',')[1], file.type);
-  reader.readAsDataURL(file); input.value = '';
-}
+  function addMsg(role, content) {
+    const msgs = document.getElementById('msgs');
+    const time = new Date().toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit' });
+    const row  = document.createElement('div');
+    row.className = 'mrow ' + (role === 'assistant' ? 'pixie' : 'user');
+    row.innerHTML = role === 'assistant'
+      ? `<div class="mdot"></div><div><div class="bbl pixie">${content}</div><div class="btime">${time}</div></div>`
+      : `<div><div class="bbl user">${content}</div><div class="btime" style="text-align:right">${time}</div></div>`;
+    msgs.appendChild(row);
+    msgs.scrollTop = msgs.scrollHeight;
+  }
 
-async function loadHistory() {
-  try {
-    const res  = await fetch(`${BACKEND}/api/history`);
-    const msgs = await res.json();
-    msgs.slice(-30).forEach(m => addMsg(m.role, m.content));
-  } catch { addMsg('assistant', 'Heyy! Main hoon Pixie — tumhari personal AI. Kaise ho aaj? 😊'); }
-}
+  function showTyping() {
+    const msgs = document.getElementById('msgs');
+    const d = document.createElement('div');
+    d.id = 'typing'; d.className = 'typing';
+    d.innerHTML = '<div class="tdot"></div><div class="tdot"></div><div class="tdot"></div><span style="margin-left:4px">Pixie soch rahi hai...</span>';
+    msgs.appendChild(d); msgs.scrollTop = msgs.scrollHeight;
+  }
+  function hideTyping() { document.getElementById('typing')?.remove(); }
 
-async function loadMems() {
-  try {
-    const res  = await fetch(`${BACKEND}/api/memories`);
-    const mems = await res.json();
-    const list = document.getElementById('memList');
-    list.innerHTML = mems.length
-      ? mems.slice(0,8).map(m=>`<div class="mem-item"><div class="mem-type">${m.type}</div>${m.content}</div>`).join('')
-      : '<div class="mem-item" style="color:var(--mt)">Talk to Pixie — she\'ll remember! 💜</div>';
-  } catch {}
-}
+  function playAudio(b64) {
+    const a = document.getElementById('audio');
+    a.src = 'data:audio/mp3;base64,' + b64;
+    setAvatar('speaking');
+    a.onended = () => setAvatar('idle');
+    a.play().catch(() => setAvatar('idle'));
+  }
 
-loadHistory(); loadMems();
+  async function send(text = null, b64 = null, mime = null) {
+    const inp = document.getElementById('inp');
+    const msg = text ?? inp.value.trim();
+    if (!msg && !b64) return;
+    if (busy) return;
+    busy = true;
+    document.getElementById('sendBtn').disabled = true;
+    inp.value = ''; inp.style.height = 'auto';
+    addMsg('user', msg || 'Sent a photo');
+    showTyping(); setAvatar('thinking');
+
+    try {
+      const body = { message: msg || 'What do you see?' };
+      if (b64)  { body.imageBase64 = b64; body.imageType = mime; }
+      const res  = await fetch(`${BACKEND}/api/chat`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });
+      const data = await res.json();
+      hideTyping();
+      addMsg('assistant', data.reply);
+      if (data.audio) playAudio(data.audio);
+      else { setAvatar(data.mood === 'happy' ? 'happy' : data.mood === 'sad' ? 'sad' : 'idle'); setTimeout(()=>setAvatar('idle'),2500); }
+      loadMems();
+    } catch {
+      hideTyping(); addMsg('assistant', 'Arre yaar, kuch gadbad ho gayi. Dobara try karo!'); setAvatar('idle');
+    }
+    busy = false; document.getElementById('sendBtn').disabled = false;
+  }
+
+  function handleImg(input) {
+    const file = input.files[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = e => send('Pixie, is photo mein kya hai?', e.target.result.split(',')[1], file.type);
+    reader.readAsDataURL(file); input.value = '';
+  }
+
+  async function loadHistory() {
+    try {
+      const res  = await fetch(`${BACKEND}/api/history`);
+      const msgs = await res.json();
+      msgs.slice(-30).forEach(m => addMsg(m.role, m.content));
+    } catch { addMsg('assistant', 'Heyy! Main hoon Pixie — tumhari personal AI. Kaise ho aaj? 😊'); }
+  }
+
+  async function loadMems() {
+    try {
+      const res  = await fetch(`${BACKEND}/api/memories`);
+      const mems = await res.json();
+      const list = document.getElementById('memList');
+      list.innerHTML = mems.length
+        ? mems.slice(0,8).map(m=>`<div class="mem-item"><div class="mem-type">${m.type}</div>${m.content}</div>`).join('')
+        : '<div class="mem-item" style="color:var(--mt)">Talk to Pixie — she\'ll remember! 💜</div>';
+    } catch {}
+  }
+
+  loadHistory(); loadMems();
 </script>
 </body>
 </html>
